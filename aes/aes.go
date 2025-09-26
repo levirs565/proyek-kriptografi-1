@@ -86,16 +86,16 @@ func (c *AesContext) keyExpansion(key []uint8) {
 }
 
 func addRoundKey(round uint8, block aesBlock, roundKey aesRoundKey) {
-	for i := uint8(0); i < 4; i++ {
-		for j := uint8(0); j < 4; j++ {
+	for i := range uint8(4) {
+		for j := range uint8(4) {
 			block[j][i] ^= roundKey[(round*4)+j][i]
 		}
 	}
 }
 
 func subBytes(block aesBlock) {
-	for i := 0; i < 4; i++ {
-		for j := 0; j < 4; j++ {
+	for i := range 4 {
+		for j := range 4 {
 			block[j][i] = getSbox(block[j][i])
 		}
 	}
@@ -133,7 +133,7 @@ func mixColumns(block aesBlock) {
 	M2 := gfieldMult2
 	M3 := gfieldMult3
 
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		a := block[i][0]
 		b := block[i][1]
 		c := block[i][2]
@@ -192,8 +192,8 @@ func invShiftRows(block aesBlock) {
 }
 
 func invSubBytes(block aesBlock) {
-	for i := 0; i < 4; i++ {
-		for j := 0; j < 4; j++ {
+	for i := range 4 {
+		for j := range 4 {
 			block[j][i] = getInvSbox(block[j][i])
 		}
 	}
@@ -202,7 +202,7 @@ func invSubBytes(block aesBlock) {
 func invMixColumns(block aesBlock) {
 	M := gfieldMult
 
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		a := block[i][0]
 		b := block[i][1]
 		c := block[i][2]
