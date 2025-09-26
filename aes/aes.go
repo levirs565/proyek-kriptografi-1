@@ -1,11 +1,12 @@
 package aes
 
 type AesContext struct {
-	roundKey [176]uint8
+	roundKey [44][4]uint8
 	iv       [16]uint8
 }
 
 type aesBlock [][4]uint8
+type aesRoundKey [][4]uint8
 
 // [kolom][baris]
 
@@ -17,23 +18,22 @@ var rcon [11]uint8 = [11]uint8{
 	0x8d, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36,
 }
 
-func keyExpansion(key []uint8, roundKey []uint8) {
+func keyExpansion(key []uint8, roundKey aesRoundKey) {
 	i := uint8(0)
 	for i = 0; i < nk; i++ {
 		j := i * 4
-		roundKey[j+0] = key[j+0]
-		roundKey[j+1] = key[j+1]
-		roundKey[j+2] = key[j+2]
-		roundKey[j+3] = key[j+3]
+		roundKey[i][0] = key[j+0]
+		roundKey[i][1] = key[j+1]
+		roundKey[i][2] = key[j+2]
+		roundKey[i][3] = key[j+3]
 	}
 
 	var temp [4]uint8
 	for i = nk; i < (nb * (nr + 1)); i++ {
-		k := (i - 1) * 4
-		temp[0] = roundKey[k+0]
-		temp[1] = roundKey[k+1]
-		temp[2] = roundKey[k+2]
-		temp[3] = roundKey[k+3]
+		temp[0] = roundKey[i-1][0]
+		temp[1] = roundKey[i-1][1]
+		temp[2] = roundKey[i-1][2]
+		temp[3] = roundKey[i-1][3]
 
 		if i%nk == 0 {
 			last := temp[0]
@@ -50,19 +50,18 @@ func keyExpansion(key []uint8, roundKey []uint8) {
 			temp[0] = temp[0] ^ rcon[i/nk]
 		}
 
-		j := i * 4
-		k = (i - nk) * 4
-		roundKey[j+0] = roundKey[k+0] ^ temp[0]
-		roundKey[j+1] = roundKey[k+1] ^ temp[1]
-		roundKey[j+2] = roundKey[k+2] ^ temp[2]
-		roundKey[j+3] = roundKey[k+3] ^ temp[3]
+		k := (i - nk)
+		roundKey[i][0] = roundKey[k][0] ^ temp[0]
+		roundKey[i][1] = roundKey[k][1] ^ temp[1]
+		roundKey[i][2] = roundKey[k][2] ^ temp[2]
+		roundKey[i][3] = roundKey[k][3] ^ temp[3]
 	}
 }
 
-func aesAddRoundKey(round uint8, block aesBlock, roundKey []uint8) {
+func aesAddRoundKey(round uint8, block aesBlock, roundKey aesRoundKey) {
 	for i := uint8(0); i < 4; i++ {
 		for j := uint8(0); j < 4; j++ {
-			block[i][j] ^= roundKey[(round*nb*4)+(i*nb)+j]
+			block[j][i] ^= roundKey[(round*4)+j][i]
 		}
 	}
 }
@@ -120,7 +119,7 @@ func aesMixColumns(block aesBlock) {
 	}
 }
 
-func aesCipher(block aesBlock, roundKey []uint8) {
+func aesCipher(block aesBlock, roundKey aesRoundKey) {
 	round := uint8(0)
 	aesAddRoundKey(round, block, roundKey)
 
@@ -189,7 +188,7 @@ func aesInvMixColumns(block aesBlock) {
 	}
 }
 
-func aesInvCipher(block aesBlock, roundKey []uint8) {
+func aesInvCipher(block aesBlock, roundKey aesRoundKey) {
 	round := uint8(nr)
 
 	aesAddRoundKey(round, block, roundKey)
