@@ -19,7 +19,7 @@ func gfieldMult3(a uint8) uint8 {
 func gfieldMult(a uint8, b uint8) uint8 {
 	res := uint8(0)
 
-	for i := 0; i < 8; i++ {
+	for range 8 {
 		if b&1 == 1 {
 			res ^= a
 		}
