@@ -12,6 +12,7 @@ func main() {
 	tabs := container.NewAppTabs(
 		container.NewTabItem("Caesar Cipher", createCaesarTab(w)),
 		container.NewTabItem("Affine Cipher", createAlfineTab(w)),
+		container.NewTabItem("RSA Cipher", createRsaTab()),
 	)
 	tabs.SetTabLocation(container.TabLocationLeading)
 
