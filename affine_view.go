@@ -1,5 +1,4 @@
 package main
-
 import (
 	"strconv"
 
@@ -11,8 +10,11 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-func createCaesarTab(w fyne.Window) fyne.CanvasObject {
-	keyEntry := widget.NewEntry()
+func createAlfineTab(w fyne.Window) fyne.CanvasObject {
+	keyEntryA := widget.NewEntry()
+	keyEntryB := widget.NewEntry()
+	
+
 	plainEntry := widget.NewMultiLineEntry()
 	cipherEntry := widget.NewMultiLineEntry()
 	processTitle := widget.NewLabel("Proses")
@@ -56,38 +58,42 @@ func createCaesarTab(w fyne.Window) fyne.CanvasObject {
 		}
 	}
 
-	getKeyInt := func() (int, bool) {
-		res, err := strconv.Atoi(keyEntry.Text)
+	getKeyInt := func() (int, int, bool) {
+		res1, err := strconv.Atoi(keyEntryA.Text)
+		res2, err := strconv.Atoi(keyEntryB.Text)
 		if err != nil {
 			dialog.NewError(err, w).Show()
-			return res, false
+			return res1, res2, false
 		}
-		return res, true
+		return res1, res2, true
 	}
 
 	middleLayout := container.NewVBox(
-		widget.NewLabelWithStyle("Kunci", fyne.TextAlignCenter, fyne.TextStyle{}),
-		keyEntry,
+		widget.NewLabelWithStyle("Kunci A", fyne.TextAlignCenter, fyne.TextStyle{}),
+		keyEntryA,
+		widget.NewLabelWithStyle("Kunci B", fyne.TextAlignCenter, fyne.TextStyle{}),
+		keyEntryB,
 		widget.NewButton("Enkripsi", func() {
-			key, success := getKeyInt()
+			keyA, keyB, success := getKeyInt()
 			if !success {
+				// dialog.show("Kunci A harus berupa angka", w)
 				return
 			}
-
-			
+			isKoprima(keyA)
 			plain := []byte(plainEntry.Text)
-			encrypted := caesarEncryptBytes(plain, key)
+			encrypted := affineEncryptBytes(plain, keyA, keyB)
 			processTitle.SetText("Proses Enkripsi")
 			showProcess(plain, encrypted)
 			cipherEntry.SetText(string(encrypted))
 		}),
 		widget.NewButton("Dekripsi", func() {
-			key, success := getKeyInt()
+			keyA, keyB, success := getKeyInt()
 			if !success {
 				return
 			}
+
 			encrypted := []byte(cipherEntry.Text)
-			plain := caesarDecryptBytes(encrypted, key)
+			plain := affineDecryptBytes(encrypted, keyA, keyB)
 			processTitle.SetText("Proses Dekripsi")
 			showProcess(encrypted, plain)
 			plainEntry.SetText(string(plain))
@@ -96,7 +102,7 @@ func createCaesarTab(w fyne.Window) fyne.CanvasObject {
 	)
 
 	return container.NewBorder(
-		widget.NewLabel("Caesar"), nil, middleLayout, nil,
+		widget.NewLabel("Affine"), nil, middleLayout, nil,
 		mainContainer,
 	)
 }

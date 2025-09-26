@@ -11,13 +11,13 @@ func caesarShiftAlphaByte(data byte, shift int) byte {
 
 func caesarEncryptBytes(data []byte, key int) []byte {
 	result := make([]byte, len(data))
-
 	for i, v := range data {
 		result[i] = caesarShiftAlphaByte(v, key)
 	}
-
 	return result
 }
+
+
 
 func caesarDecryptBytes(data []byte, key int) []byte {
 	return caesarEncryptBytes(data, -key)

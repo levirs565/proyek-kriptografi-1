@@ -11,6 +11,7 @@ func main() {
 
 	tabs := container.NewAppTabs(
 		container.NewTabItem("Caesar Cipher", createCaesarTab(w)),
+		container.NewTabItem("Affine Cipher", createAlfineTab(w)),
 	)
 	tabs.SetTabLocation(container.TabLocationLeading)
 
