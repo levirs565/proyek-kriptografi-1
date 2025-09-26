@@ -9,7 +9,7 @@ const (
 )
 
 type AesContext struct {
-	roundKey   [44][4]uint8
+	roundKey   [60][4]uint8
 	iv         [16]uint8
 	roundCount uint8
 	keyLength  uint8
@@ -45,43 +45,46 @@ func NewAesContext(variant AESVariant, key []uint8) AesContext {
 	return ctx
 }
 
-func (c *AesContext) keyExpansion(key []uint8) {
-	i := uint8(0)
-	for i = 0; i < c.keyLength; i++ {
-		j := i * 4
-		c.roundKey[i][0] = key[j+0]
-		c.roundKey[i][1] = key[j+1]
-		c.roundKey[i][2] = key[j+2]
-		c.roundKey[i][3] = key[j+3]
+func rotWord(data [4]uint8) [4]uint8 {
+	return [4]uint8{data[1], data[2], data[3], data[0]}
+}
+
+func subWord(data [4]uint8) [4]uint8 {
+	return [4]uint8{
+		getSbox(data[0]),
+		getSbox(data[1]),
+		getSbox(data[2]),
+		getSbox(data[3]),
 	}
+}
 
-	var temp [4]uint8
-	for i = c.keyLength; i < (nb * (c.roundCount + 1)); i++ {
-		temp[0] = c.roundKey[i-1][0]
-		temp[1] = c.roundKey[i-1][1]
-		temp[2] = c.roundKey[i-1][2]
-		temp[3] = c.roundKey[i-1][3]
+func xorWord(a, b [4]uint8) [4]uint8 {
+	return [4]uint8{
+		a[0] ^ b[0],
+		a[1] ^ b[1],
+		a[2] ^ b[2],
+		a[3] ^ b[3],
+	}
+}
 
-		if i%c.keyLength == 0 {
-			last := temp[0]
-			temp[0] = temp[1]
-			temp[1] = temp[2]
-			temp[2] = temp[3]
-			temp[3] = last
+func (c *AesContext) keyExpansion(key []uint8) {
+	for i := uint8(0); i < (nb * (c.roundCount + 1)); i++ {
+		if i < c.keyLength {
+			j := i * 4
+			copy(c.roundKey[i][:], key[j:j+4])
+		} else {
+			current := c.roundKey[i-1]
 
-			temp[0] = getSbox(temp[0])
-			temp[1] = getSbox(temp[1])
-			temp[2] = getSbox(temp[2])
-			temp[3] = getSbox(temp[3])
+			if i%c.keyLength == 0 {
+				current = subWord(rotWord(current))
+				current[0] ^= rcon[i/c.keyLength]
+			} else if c.keyLength > 6 && i%c.keyLength == 4 {
+				current = subWord(current)
+			}
 
-			temp[0] = temp[0] ^ rcon[i/c.keyLength]
+			current = xorWord(c.roundKey[i-c.keyLength], current)
+			c.roundKey[i] = current
 		}
-
-		k := (i - c.keyLength)
-		c.roundKey[i][0] = c.roundKey[k][0] ^ temp[0]
-		c.roundKey[i][1] = c.roundKey[k][1] ^ temp[1]
-		c.roundKey[i][2] = c.roundKey[k][2] ^ temp[2]
-		c.roundKey[i][3] = c.roundKey[k][3] ^ temp[3]
 	}
 }
 
