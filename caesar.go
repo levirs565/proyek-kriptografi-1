@@ -9,16 +9,6 @@ func caesarShiftAlphaByte(data byte, shift int) byte { //fungsi menggeser alfabe
 	return data
 }
 
-<<<<<<< Updated upstream
-func caesarEncryptBytes(data []byte, key int) []byte {
-	result := make([]byte, len(data))
-	for i, v := range data {
-		result[i] = caesarShiftAlphaByte(v, key)
-	}
-	return result
-}
-
-=======
 func caesarShiftAlphaNumByte(data byte, shift int) byte { //fungsi menggeser alfabet(a-z) dan angka (0-9)
 	if data >= 'a' && data <= 'z' {
 		return 'a' + byte(safeIntShift(int(data-'a'), shift, 26))
@@ -54,7 +44,6 @@ func caesarShiftCustomByte(data byte, shift int, charset string) byte {
 func caesarEncryptBytes(data []byte, key int, caesarOption string, customCharset string) []byte {
 	result := make([]byte, len(data))
 	for i, v := range data {
-<<<<<<< HEAD
 		switch caesarOption {
 		case "Alfabet (A-Z)":
 			result[i] = caesarShiftAlphaByte(v, key)
@@ -67,22 +56,10 @@ func caesarEncryptBytes(data []byte, key int, caesarOption string, customCharset
 		default:
 			result[i] = v
 		}
-
-=======
-		result[i] = caesarShiftAlphaByte(v, key)
->>>>>>> 64a6de68ce4eb13fb08d1795474b51aa4c36f0e3
 	}
 	return result
 }
 
-<<<<<<< HEAD
 func caesarDecryptBytes(data []byte, key int, caesarOption string, customCharset string) []byte {
 	return caesarEncryptBytes(data, -key, caesarOption, customCharset)
-=======
->>>>>>> Stashed changes
-
-
-func caesarDecryptBytes(data []byte, key int) []byte {
-	return caesarEncryptBytes(data, -key)
->>>>>>> 64a6de68ce4eb13fb08d1795474b51aa4c36f0e3
 }
