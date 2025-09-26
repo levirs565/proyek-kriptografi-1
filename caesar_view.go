@@ -13,6 +13,18 @@ import (
 
 func createCaesarTab(w fyne.Window) fyne.CanvasObject {
 	keyEntry := widget.NewEntry()
+	customCharsetEntry := widget.NewEntry()
+	customCharsetEntry.SetPlaceHolder("Masukkan karakter custom...")
+	customCharsetEntry.Hide()
+	modeSelect := widget.NewSelect([]string{"Alfabet (A-Z)", "Alphanum (A-Z dan 0-9)", "ASCII", "Custom karakter"},
+		func(value string) {
+			if value == "Custom karakter" {
+				customCharsetEntry.Show()
+			} else {
+				customCharsetEntry.Hide()
+			}
+		})
+	modeSelect.SetSelected("Alfabet (A-Z)")
 	plainEntry := widget.NewMultiLineEntry()
 	cipherEntry := widget.NewMultiLineEntry()
 	processTitle := widget.NewLabel("Proses")
@@ -68,6 +80,9 @@ func createCaesarTab(w fyne.Window) fyne.CanvasObject {
 	middleLayout := container.NewVBox(
 		widget.NewLabelWithStyle("Kunci", fyne.TextAlignCenter, fyne.TextStyle{}),
 		keyEntry,
+		widget.NewLabelWithStyle("Opsi Caesar", fyne.TextAlignCenter, fyne.TextStyle{}), // <<<--- ditambahkan
+		modeSelect,
+		customCharsetEntry,
 		widget.NewButton("Enkripsi", func() {
 			key, success := getKeyInt()
 			if !success {
@@ -76,7 +91,7 @@ func createCaesarTab(w fyne.Window) fyne.CanvasObject {
 
 			
 			plain := []byte(plainEntry.Text)
-			encrypted := caesarEncryptBytes(plain, key)
+			encrypted := caesarEncryptBytes(plain, key, modeSelect.Selected, customCharsetEntry.Text)
 			processTitle.SetText("Proses Enkripsi")
 			showProcess(plain, encrypted)
 			cipherEntry.SetText(string(encrypted))
@@ -87,7 +102,7 @@ func createCaesarTab(w fyne.Window) fyne.CanvasObject {
 				return
 			}
 			encrypted := []byte(cipherEntry.Text)
-			plain := caesarDecryptBytes(encrypted, key)
+			plain := caesarDecryptBytes(encrypted, key, modeSelect.Selected, customCharsetEntry.Text)
 			processTitle.SetText("Proses Dekripsi")
 			showProcess(encrypted, plain)
 			plainEntry.SetText(string(plain))
