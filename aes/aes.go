@@ -1,8 +1,18 @@
 package aes
 
+type AESVariant int
+
+const (
+	AES128 AESVariant = iota
+	AES192
+	AES256
+)
+
 type AesContext struct {
-	roundKey [44][4]uint8
-	iv       [16]uint8
+	roundKey   [44][4]uint8
+	iv         [16]uint8
+	roundCount uint8
+	keyLength  uint8
 }
 
 type aesBlock [][4]uint8
@@ -10,32 +20,49 @@ type aesRoundKey [][4]uint8
 
 // [kolom][baris]
 
-var nb uint8 = 4
-var nk uint8 = 4
-var nr uint8 = 10
+const nb uint8 = 4
 
 var rcon [11]uint8 = [11]uint8{
 	0x8d, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36,
 }
 
-func keyExpansion(key []uint8, roundKey aesRoundKey) {
+func NewAesContext(variant AESVariant, key []uint8) AesContext {
+	ctx := AesContext{}
+
+	switch variant {
+	case AES128:
+		ctx.keyLength = 4
+		ctx.roundCount = 10
+	case AES192:
+		ctx.keyLength = 6
+		ctx.roundCount = 12
+	default:
+		ctx.keyLength = 8
+		ctx.roundCount = 14
+	}
+
+	ctx.keyExpansion(key)
+	return ctx
+}
+
+func (c *AesContext) keyExpansion(key []uint8) {
 	i := uint8(0)
-	for i = 0; i < nk; i++ {
+	for i = 0; i < c.keyLength; i++ {
 		j := i * 4
-		roundKey[i][0] = key[j+0]
-		roundKey[i][1] = key[j+1]
-		roundKey[i][2] = key[j+2]
-		roundKey[i][3] = key[j+3]
+		c.roundKey[i][0] = key[j+0]
+		c.roundKey[i][1] = key[j+1]
+		c.roundKey[i][2] = key[j+2]
+		c.roundKey[i][3] = key[j+3]
 	}
 
 	var temp [4]uint8
-	for i = nk; i < (nb * (nr + 1)); i++ {
-		temp[0] = roundKey[i-1][0]
-		temp[1] = roundKey[i-1][1]
-		temp[2] = roundKey[i-1][2]
-		temp[3] = roundKey[i-1][3]
+	for i = c.keyLength; i < (nb * (c.roundCount + 1)); i++ {
+		temp[0] = c.roundKey[i-1][0]
+		temp[1] = c.roundKey[i-1][1]
+		temp[2] = c.roundKey[i-1][2]
+		temp[3] = c.roundKey[i-1][3]
 
-		if i%nk == 0 {
+		if i%c.keyLength == 0 {
 			last := temp[0]
 			temp[0] = temp[1]
 			temp[1] = temp[2]
@@ -47,14 +74,14 @@ func keyExpansion(key []uint8, roundKey aesRoundKey) {
 			temp[2] = getSbox(temp[2])
 			temp[3] = getSbox(temp[3])
 
-			temp[0] = temp[0] ^ rcon[i/nk]
+			temp[0] = temp[0] ^ rcon[i/c.keyLength]
 		}
 
-		k := (i - nk)
-		roundKey[i][0] = roundKey[k][0] ^ temp[0]
-		roundKey[i][1] = roundKey[k][1] ^ temp[1]
-		roundKey[i][2] = roundKey[k][2] ^ temp[2]
-		roundKey[i][3] = roundKey[k][3] ^ temp[3]
+		k := (i - c.keyLength)
+		c.roundKey[i][0] = c.roundKey[k][0] ^ temp[0]
+		c.roundKey[i][1] = c.roundKey[k][1] ^ temp[1]
+		c.roundKey[i][2] = c.roundKey[k][2] ^ temp[2]
+		c.roundKey[i][3] = c.roundKey[k][3] ^ temp[3]
 	}
 }
 
@@ -119,21 +146,21 @@ func mixColumns(block aesBlock) {
 	}
 }
 
-func cipher(block aesBlock, roundKey aesRoundKey) {
+func (c *AesContext) cipher(block aesBlock, roundKey aesRoundKey) {
 	round := uint8(0)
 	addRoundKey(round, block, roundKey)
 
 	for round = 1; ; round++ {
 		subBytes(block)
 		shiftRows(block)
-		if round == nr {
+		if round == c.roundCount {
 			break
 		}
 		mixColumns(block)
 		addRoundKey(round, block, roundKey)
 	}
 
-	addRoundKey(nr, block, roundKey)
+	addRoundKey(c.roundCount, block, roundKey)
 }
 
 func invShiftRows(block aesBlock) {
@@ -188,12 +215,12 @@ func invMixColumns(block aesBlock) {
 	}
 }
 
-func invCipher(block aesBlock, roundKey aesRoundKey) {
-	round := uint8(nr)
+func (c *AesContext) invCipher(block aesBlock, roundKey aesRoundKey) {
+	round := uint8(c.roundCount)
 
 	addRoundKey(round, block, roundKey)
 
-	for round := nr - 1; ; round-- {
+	for round := c.roundCount - 1; ; round-- {
 		invShiftRows(block)
 		invSubBytes(block)
 		addRoundKey(round, block, roundKey)
@@ -202,11 +229,6 @@ func invCipher(block aesBlock, roundKey aesRoundKey) {
 		}
 		invMixColumns(block)
 	}
-}
-func NewAesContext(key []uint8) AesContext {
-	ctx := AesContext{}
-	keyExpansion(key, ctx.roundKey[:])
-	return ctx
 }
 
 func (c *AesContext) EncryptECBBlock(bytes [16]uint8) [16]uint8 {
@@ -217,7 +239,7 @@ func (c *AesContext) EncryptECBBlock(bytes [16]uint8) [16]uint8 {
 		{bytes[12], bytes[13], bytes[14], bytes[15]},
 	}
 
-	cipher(block, c.roundKey[:])
+	c.cipher(block, c.roundKey[:])
 
 	return [16]uint8{
 		block[0][0], block[0][1], block[0][2], block[0][3],
@@ -235,7 +257,7 @@ func (c *AesContext) DeryptECBBlock(bytes [16]uint8) [16]uint8 {
 		{bytes[12], bytes[13], bytes[14], bytes[15]},
 	}
 
-	invCipher(block, c.roundKey[:])
+	c.invCipher(block, c.roundKey[:])
 
 	return [16]uint8{
 		block[0][0], block[0][1], block[0][2], block[0][3],
