@@ -58,7 +58,7 @@ func keyExpansion(key []uint8, roundKey aesRoundKey) {
 	}
 }
 
-func aesAddRoundKey(round uint8, block aesBlock, roundKey aesRoundKey) {
+func addRoundKey(round uint8, block aesBlock, roundKey aesRoundKey) {
 	for i := uint8(0); i < 4; i++ {
 		for j := uint8(0); j < 4; j++ {
 			block[j][i] ^= roundKey[(round*4)+j][i]
@@ -66,7 +66,7 @@ func aesAddRoundKey(round uint8, block aesBlock, roundKey aesRoundKey) {
 	}
 }
 
-func aesSubBytes(block aesBlock) {
+func subBytes(block aesBlock) {
 	for i := 0; i < 4; i++ {
 		for j := 0; j < 4; j++ {
 			block[j][i] = getSbox(block[j][i])
@@ -74,7 +74,7 @@ func aesSubBytes(block aesBlock) {
 	}
 }
 
-func aesShiftRows(block aesBlock) {
+func shiftRows(block aesBlock) {
 	// a, b, c, d
 	// b, c, d, a
 	temp := block[0][1]
@@ -102,7 +102,7 @@ func aesShiftRows(block aesBlock) {
 	block[1][3] = temp
 }
 
-func aesMixColumns(block aesBlock) {
+func mixColumns(block aesBlock) {
 	M2 := gfieldMult2
 	M3 := gfieldMult3
 
@@ -119,24 +119,24 @@ func aesMixColumns(block aesBlock) {
 	}
 }
 
-func aesCipher(block aesBlock, roundKey aesRoundKey) {
+func cipher(block aesBlock, roundKey aesRoundKey) {
 	round := uint8(0)
-	aesAddRoundKey(round, block, roundKey)
+	addRoundKey(round, block, roundKey)
 
 	for round = 1; ; round++ {
-		aesSubBytes(block)
-		aesShiftRows(block)
+		subBytes(block)
+		shiftRows(block)
 		if round == nr {
 			break
 		}
-		aesMixColumns(block)
-		aesAddRoundKey(round, block, roundKey)
+		mixColumns(block)
+		addRoundKey(round, block, roundKey)
 	}
 
-	aesAddRoundKey(nr, block, roundKey)
+	addRoundKey(nr, block, roundKey)
 }
 
-func aesInvShiftRows(block aesBlock) {
+func invShiftRows(block aesBlock) {
 	// a, b, c, d
 	// d, a, b, c
 	temp := block[3][1]
@@ -164,7 +164,7 @@ func aesInvShiftRows(block aesBlock) {
 	block[3][3] = temp
 }
 
-func aesInvSubBytes(block aesBlock) {
+func invSubBytes(block aesBlock) {
 	for i := 0; i < 4; i++ {
 		for j := 0; j < 4; j++ {
 			block[j][i] = getInvSbox(block[j][i])
@@ -172,7 +172,7 @@ func aesInvSubBytes(block aesBlock) {
 	}
 }
 
-func aesInvMixColumns(block aesBlock) {
+func invMixColumns(block aesBlock) {
 	M := gfieldMult
 
 	for i := 0; i < 4; i++ {
@@ -188,19 +188,19 @@ func aesInvMixColumns(block aesBlock) {
 	}
 }
 
-func aesInvCipher(block aesBlock, roundKey aesRoundKey) {
+func invCipher(block aesBlock, roundKey aesRoundKey) {
 	round := uint8(nr)
 
-	aesAddRoundKey(round, block, roundKey)
+	addRoundKey(round, block, roundKey)
 
 	for round := nr - 1; ; round-- {
-		aesInvShiftRows(block)
-		aesInvSubBytes(block)
-		aesAddRoundKey(round, block, roundKey)
+		invShiftRows(block)
+		invSubBytes(block)
+		addRoundKey(round, block, roundKey)
 		if round == 0 {
 			break
 		}
-		aesInvMixColumns(block)
+		invMixColumns(block)
 	}
 }
 func NewAesContext(key []uint8) AesContext {
@@ -217,7 +217,7 @@ func (c *AesContext) EncryptECBBlock(bytes [16]uint8) [16]uint8 {
 		{bytes[12], bytes[13], bytes[14], bytes[15]},
 	}
 
-	aesCipher(block, c.roundKey[:])
+	cipher(block, c.roundKey[:])
 
 	return [16]uint8{
 		block[0][0], block[0][1], block[0][2], block[0][3],
@@ -235,7 +235,7 @@ func (c *AesContext) DeryptECBBlock(bytes [16]uint8) [16]uint8 {
 		{bytes[12], bytes[13], bytes[14], bytes[15]},
 	}
 
-	aesInvCipher(block, c.roundKey[:])
+	invCipher(block, c.roundKey[:])
 
 	return [16]uint8{
 		block[0][0], block[0][1], block[0][2], block[0][3],
