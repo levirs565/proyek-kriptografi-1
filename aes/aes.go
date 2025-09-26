@@ -104,32 +104,26 @@ func subBytes(block aesBlock) {
 	}
 }
 
+func getRowElements(block aesBlock, i uint8) (uint8, uint8, uint8, uint8) {
+	return block[0][i], block[1][i], block[2][i], block[3][i]
+}
+
+func setRowElements(block aesBlock, i uint8, data [4]uint8) {
+	block[0][i] = data[0]
+	block[1][i] = data[1]
+	block[2][i] = data[2]
+	block[3][i] = data[3]
+}
+
 func shiftRows(block aesBlock) {
-	// a, b, c, d
-	// b, c, d, a
-	temp := block[0][1]
-	block[0][1] = block[1][1]
-	block[1][1] = block[2][1]
-	block[2][1] = block[3][1]
-	block[3][1] = temp
+	a, b, c, d := getRowElements(block, 1)
+	setRowElements(block, 1, [4]uint8{b, c, d, a})
 
-	// a, b, c, d
-	// c, d, a, b
-	temp = block[0][2]
-	block[0][2] = block[2][2]
-	block[2][2] = temp
+	a, b, c, d = getRowElements(block, 2)
+	setRowElements(block, 2, [4]uint8{c, d, a, b})
 
-	temp = block[1][2]
-	block[1][2] = block[3][2]
-	block[3][2] = temp
-
-	// a, b, c, d
-	// d, a, b, c
-	temp = block[0][3]
-	block[0][3] = block[3][3]
-	block[3][3] = block[2][3]
-	block[2][3] = block[1][3]
-	block[1][3] = temp
+	a, b, c, d = getRowElements(block, 3)
+	setRowElements(block, 3, [4]uint8{d, a, b, c})
 }
 
 func mixColumns(block aesBlock) {
@@ -167,31 +161,12 @@ func (c *AesContext) cipher(block aesBlock, roundKey aesRoundKey) {
 }
 
 func invShiftRows(block aesBlock) {
-	// a, b, c, d
-	// d, a, b, c
-	temp := block[3][1]
-	block[3][1] = block[2][1]
-	block[2][1] = block[1][1]
-	block[1][1] = block[0][1]
-	block[0][1] = temp
-
-	// a, b, c, d
-	// c, d, a, b
-	temp = block[0][2]
-	block[0][2] = block[2][2]
-	block[2][2] = temp
-
-	temp = block[1][2]
-	block[1][2] = block[3][2]
-	block[3][2] = temp
-
-	// a, b, c, d
-	// b, c, d, a
-	temp = block[0][3]
-	block[0][3] = block[1][3]
-	block[1][3] = block[2][3]
-	block[2][3] = block[3][3]
-	block[3][3] = temp
+	a, b, c, d := getRowElements(block, 1)
+	setRowElements(block, 1, [4]uint8{d, a, b, c})
+	a, b, c, d = getRowElements(block, 2)
+	setRowElements(block, 2, [4]uint8{c, d, a, b})
+	a, b, c, d = getRowElements(block, 3)
+	setRowElements(block, 3, [4]uint8{b, c, d, a})
 }
 
 func invSubBytes(block aesBlock) {
