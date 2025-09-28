@@ -138,7 +138,7 @@ func (c *AesContext) invCipher(block *aesBlock, roundKey aesRoundKey) {
 	}
 }
 
-func (c *AesContext) EncryptECBBlock(bytes [16]uint8) [16]uint8 {
+func (c *AesContext) EncryptBlock(bytes [16]uint8) [16]uint8 {
 	block := bytesToBlock(bytes)
 
 	c.cipher(&block, c.roundKey[:])
@@ -146,7 +146,7 @@ func (c *AesContext) EncryptECBBlock(bytes [16]uint8) [16]uint8 {
 	return block.toBytes()
 }
 
-func (c *AesContext) DeryptECBBlock(bytes [16]uint8) [16]uint8 {
+func (c *AesContext) DeryptBlock(bytes [16]uint8) [16]uint8 {
 	block := bytesToBlock(bytes)
 
 	c.invCipher(&block, c.roundKey[:])
@@ -154,33 +154,81 @@ func (c *AesContext) DeryptECBBlock(bytes [16]uint8) [16]uint8 {
 	return block.toBytes()
 }
 
-func (c *AesContext) EncryptECB(bytes []uint8) []uint8 {
-	padded_bytes := pkcs7Padd(bytes)
+func (c *AesContext) EncryptECB(bytes []uint8, padding Padding) ([]uint8, error) {
+	padded_bytes, err := padd(bytes, padding)
+	if err != nil {
+		return nil, err
+	}
+
 	cipher_bytes := make([]uint8, len(padded_bytes))
 
 	for i := 0; i < len(padded_bytes); i += int(blockLength) {
 		plain_block := padded_bytes[i : i+int(blockLength)]
-		cipher_block := c.EncryptECBBlock([16]uint8(plain_block))
+		cipher_block := c.EncryptBlock([16]uint8(plain_block))
 		copy(cipher_bytes[i:i+int(blockLength)], cipher_block[:])
 	}
 
-	return cipher_bytes
+	return cipher_bytes, nil
 }
 
-func (c *AesContext) DecryptECB(bytes []uint8) ([]uint8, error) {
+func (c *AesContext) DecryptECB(bytes []uint8, padding Padding) ([]uint8, error) {
+	if len(bytes)%int(blockLength) != 0 {
+		return nil, ErrInvalidLength
+	}
+	plain_bytes := make([]uint8, len(bytes))
+
+	for i := 0; i < len(plain_bytes); i += int(blockLength) {
+		cipher_block := bytes[i : i+int(blockLength)]
+		plain_block := c.DeryptBlock([16]uint8(cipher_block))
+		copy(plain_bytes[i:i+int(blockLength)], plain_block[:])
+	}
+
+	return unpadd(plain_bytes, padding)
+}
+
+func (c *AesContext) SetIv(iv [16]uint8) {
+	c.iv = iv
+}
+
+func (c *AesContext) xorWithIv(bytes []uint8) {
+	for i := range blockLength {
+		bytes[i] ^= c.iv[i]
+	}
+}
+
+func (c *AesContext) EncryptCBC(bytes []uint8, padding Padding) ([]uint8, error) {
+	padded_bytes, err := padd(bytes, padding)
+	if err != nil {
+		return nil, err
+	}
+	cipher_bytes := make([]uint8, len(padded_bytes))
+
+	for i := 0; i < len(padded_bytes); i += int(blockLength) {
+		plain_block := padded_bytes[i : i+int(blockLength)]
+		c.xorWithIv(plain_block)
+		cipher_block := c.EncryptBlock([16]uint8(plain_block))
+		c.iv = cipher_block
+		copy(cipher_bytes[i:i+int(blockLength)], cipher_block[:])
+	}
+
+	return cipher_bytes, nil
+}
+
+func (c *AesContext) DecryptCBC(bytes []uint8, padding Padding) ([]uint8, error) {
 	if len(bytes)%int(blockLength) != 0 {
 		return nil, ErrInvalidLength
 	}
 
 	plain_bytes := make([]uint8, len(bytes))
-
 	for i := 0; i < len(plain_bytes); i += int(blockLength) {
 		cipher_block := bytes[i : i+int(blockLength)]
-		plain_block := c.DeryptECBBlock([16]uint8(cipher_block))
+		plain_block := c.DeryptBlock([16]uint8(cipher_block))
+		c.xorWithIv(plain_block[:])
+		c.iv = [16]uint8(cipher_block)
 		copy(plain_bytes[i:i+int(blockLength)], plain_block[:])
 	}
 
-	return pkcs7Unpadd(plain_bytes)
+	return unpadd(plain_bytes, padding)
 }
 
 func AESInit() {
