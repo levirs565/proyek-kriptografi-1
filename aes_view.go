@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"errors"
 	"kriptografi1/aes"
 	"strings"
@@ -17,6 +18,9 @@ var ErrPlainDecode = errors.New("gagal decode hex plain")
 var ErrCipherEncode = errors.New("gagal encode hex cipher")
 var ErrCipherDecode = errors.New("gagal decode hex cipher")
 var ErrDecrypt = errors.New("gagal decrypt")
+var ErrEncrypt = errors.New("gagal encrypt")
+var ErrIvLength = errors.New("ukuran iv harus 16 byte")
+var ErrIvDecode = errors.New("iv gagal di hex decode")
 
 var inputTypes = []string{"Raw", "Hex"}
 
@@ -26,18 +30,49 @@ func createAesTab(w fyne.Window) fyne.CanvasObject {
 	variantSelect := widget.NewSelect([]string{"AES-128", "AES-192", "AES-256"}, func(s string) {})
 	variantMap := []aes.AESVariant{aes.AES128, aes.AES192, aes.AES256}
 
+	paddingSelect := widget.NewSelect([]string{"PKCS#7", "No Padding"}, func(s string) {})
+	paddingMap := []aes.Padding{aes.PKCS7Padding, aes.NoPadding}
+
 	keyTypeSelect := widget.NewSelect(inputTypes, func(s string) {})
 	keyEntry := widget.NewEntry()
+	ivLabel := widget.NewLabelWithStyle("Initialization Vector (Hex)", fyne.TextAlignCenter, fyne.TextStyle{})
+	ivEntry := widget.NewEntry()
 	plainEntry := widget.NewMultiLineEntry()
 	plainTypeSelect := widget.NewSelect(inputTypes, func(s string) {})
 	cipherEntry := widget.NewMultiLineEntry()
+
+	generateIvButton := widget.NewButton("Random IV", func() {
+		var iv [16]uint8
+		rand.Read(iv[:])
+
+		hex, err := encodeHexString(iv[:])
+
+		if err != nil {
+			dialog.NewError(err, w).Show()
+			return
+		}
+
+		ivEntry.SetText(hex)
+	})
+
+	modeSelect := widget.NewSelect([]string{"ECB", "CBC"}, func(s string) {
+		if s == "ECB" {
+			ivEntry.Hide()
+			ivLabel.Hide()
+			generateIvButton.Hide()
+		} else {
+			ivEntry.Show()
+			ivLabel.Show()
+			generateIvButton.Show()
+		}
+	})
 
 	mainContainer := container.NewGridWithRows(2,
 		container.NewBorder(
 			container.NewVBox(widget.NewLabel("Plain Teks"), plainTypeSelect),
 			nil, nil, nil, plainEntry,
 		),
-		container.NewBorder(widget.NewLabel("Cipher Teks"), nil, nil, nil, cipherEntry),
+		container.NewBorder(widget.NewLabel("Cipher Teks (Hex)"), nil, nil, nil, cipherEntry),
 	)
 
 	getContext := func() (*aes.AesContext, bool) {
@@ -60,20 +95,44 @@ func createAesTab(w fyne.Window) fyne.CanvasObject {
 			dialog.NewError(err, w).Show()
 			return nil, false
 		}
+
+		if modeSelect.SelectedIndex() == 1 {
+			iv, err := decodeHexString(strings.TrimSpace(ivEntry.Text))
+			if err != nil {
+				dialog.NewError(errors.Join(ErrIvDecode, err), w).Show()
+				return nil, false
+			}
+
+			if len(iv) != 16 {
+				dialog.NewError(ErrIvLength, w).Show()
+				return nil, false
+			}
+
+			ctx.SetIv([16]uint8(iv))
+		}
+
 		return ctx, true
 	}
 
 	variantSelect.SetSelectedIndex(0)
 	keyTypeSelect.SetSelectedIndex(0)
 	plainTypeSelect.SetSelectedIndex(0)
+	paddingSelect.SetSelectedIndex(0)
+	modeSelect.SetSelectedIndex(0)
 
 	leftLayout := container.NewVBox(
 		widget.NewLabelWithStyle("Jenis AES", fyne.TextAlignCenter, fyne.TextStyle{}),
 		variantSelect,
+		widget.NewLabelWithStyle("Mode", fyne.TextAlignCenter, fyne.TextStyle{}),
+		modeSelect,
+		widget.NewLabelWithStyle("Padding", fyne.TextAlignCenter, fyne.TextStyle{}),
+		paddingSelect,
 		widget.NewLabelWithStyle("Kunci", fyne.TextAlignCenter, fyne.TextStyle{}),
 		keyTypeSelect,
 		keyEntry,
-		widget.NewLabelWithStyle("Padding: PKCS#7", fyne.TextAlignCenter, fyne.TextStyle{}),
+		ivLabel,
+		ivEntry,
+		generateIvButton,
 		widget.NewButton("Enkripsi", func() {
 			ctx, success := getContext()
 			if !success {
@@ -92,7 +151,18 @@ func createAesTab(w fyne.Window) fyne.CanvasObject {
 				plain = decoded
 			}
 
-			cipher := ctx.EncryptECB(plain)
+			var cipher []uint8
+			var err error
+			padding := paddingMap[paddingSelect.SelectedIndex()]
+			if modeSelect.SelectedIndex() == 0 {
+				cipher, err = ctx.EncryptECB(plain, padding)
+			} else {
+				cipher, err = ctx.EncryptCBC(plain, padding)
+			}
+
+			if err != nil {
+				dialog.NewError(errors.Join(ErrEncrypt, err), w).Show()
+			}
 
 			hex, err := encodeHexString(cipher)
 
@@ -114,7 +184,15 @@ func createAesTab(w fyne.Window) fyne.CanvasObject {
 				return
 			}
 
-			plain, err := ctx.DecryptECB(cipher)
+			var plain []uint8
+			padding := paddingMap[paddingSelect.SelectedIndex()]
+
+			if modeSelect.SelectedIndex() == 0 {
+				plain, err = ctx.DecryptECB(cipher, padding)
+			} else {
+				plain, err = ctx.DecryptCBC(cipher, padding)
+			}
+
 			if err != nil {
 				dialog.NewError(errors.Join(ErrDecrypt, err), w).Show()
 				return
