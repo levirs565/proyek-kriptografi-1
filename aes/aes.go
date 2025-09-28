@@ -136,6 +136,35 @@ func (c *AesContext) DeryptECBBlock(bytes [16]uint8) [16]uint8 {
 	return block.toBytes()
 }
 
+func (c *AesContext) EncryptECB(bytes []uint8) []uint8 {
+	padded_bytes := pkcs7Padd(bytes)
+	cipher_bytes := make([]uint8, len(padded_bytes))
+
+	for i := 0; i < len(padded_bytes); i += int(blockLength) {
+		plain_block := padded_bytes[i : i+int(blockLength)]
+		cipher_block := c.EncryptECBBlock([16]uint8(plain_block))
+		copy(cipher_bytes[i:i+int(blockLength)], cipher_block[:])
+	}
+
+	return cipher_bytes
+}
+
+func (c *AesContext) DecryptECB(bytes []uint8) ([]uint8, bool) {
+	if len(bytes)%int(blockLength) != 0 {
+		return nil, false
+	}
+
+	plain_bytes := make([]uint8, len(bytes))
+
+	for i := 0; i < len(plain_bytes); i += int(blockLength) {
+		cipher_block := bytes[i : i+int(blockLength)]
+		plain_block := c.DeryptECBBlock([16]uint8(cipher_block))
+		copy(plain_bytes[i:i+int(blockLength)], plain_block[:])
+	}
+
+	return pkcs7Unpadd(plain_bytes)
+}
+
 func AESInit() {
 	gfieldMultInvInit()
 	sboxInit()
