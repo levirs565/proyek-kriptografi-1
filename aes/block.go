@@ -4,6 +4,8 @@ type aesBlock struct {
 	d [4][4]uint8
 }
 
+const blockLength uint8 = 16
+
 func bytesToBlock(bytes [16]uint8) aesBlock {
 	return aesBlock{
 		d: [4][4]uint8{
