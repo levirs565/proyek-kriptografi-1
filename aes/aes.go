@@ -1,5 +1,7 @@
 package aes
 
+import "errors"
+
 type AESVariant int
 
 const (
@@ -18,6 +20,8 @@ type AesContext struct {
 type aesRoundKey [][4]uint8
 
 // [kolom][baris]
+
+var ErrInvalidLength = errors.New("ukuran bytes tidak sesuai dengan ukuran blok")
 
 const nb uint8 = 4
 
@@ -149,9 +153,9 @@ func (c *AesContext) EncryptECB(bytes []uint8) []uint8 {
 	return cipher_bytes
 }
 
-func (c *AesContext) DecryptECB(bytes []uint8) ([]uint8, bool) {
+func (c *AesContext) DecryptECB(bytes []uint8) ([]uint8, error) {
 	if len(bytes)%int(blockLength) != 0 {
-		return nil, false
+		return nil, ErrInvalidLength
 	}
 
 	plain_bytes := make([]uint8, len(bytes))

@@ -1,6 +1,12 @@
 package aes
 
-import "slices"
+import (
+	"errors"
+	"slices"
+)
+
+var ErrInvalidPadding = errors.New("ukuran padding tidak valid")
+var ErrPaddingNotMatch = errors.New("padding tidak sesuai")
 
 func pkcs7Padd(bytes []uint8) []uint8 {
 	length := len(bytes)
@@ -13,24 +19,24 @@ func pkcs7Padd(bytes []uint8) []uint8 {
 	return result
 }
 
-func pkcs7Unpadd(bytes []uint8) ([]uint8, bool) {
+func pkcs7Unpadd(bytes []uint8) ([]uint8, error) {
 	length := len(bytes)
 
 	if length == 0 {
-		return nil, false
+		return []uint8{}, nil
 	}
 
 	amount := bytes[length-1]
 
 	if amount == 0 || int(amount) > length {
-		return nil, false
+		return nil, ErrInvalidPadding
 	}
 
 	for i := range amount {
 		if bytes[length-1-int(i)] != amount {
-			return nil, false
+			return nil, ErrPaddingNotMatch
 		}
 	}
 
-	return slices.Clone(bytes[:length-int(amount)]), true
+	return slices.Clone(bytes[:length-int(amount)]), nil
 }
