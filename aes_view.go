@@ -121,12 +121,11 @@ func createAesTab(w fyne.Window) fyne.CanvasObject {
 	modeSelect.SetSelectedIndex(0)
 
 	leftLayout := container.NewVBox(
-		widget.NewLabelWithStyle("Jenis AES", fyne.TextAlignCenter, fyne.TextStyle{}),
-		variantSelect,
-		widget.NewLabelWithStyle("Mode", fyne.TextAlignCenter, fyne.TextStyle{}),
-		modeSelect,
-		widget.NewLabelWithStyle("Padding", fyne.TextAlignCenter, fyne.TextStyle{}),
-		paddingSelect,
+		widget.NewForm(
+			widget.NewFormItem("Jenis AES", variantSelect),
+			widget.NewFormItem("Mode", modeSelect),
+			widget.NewFormItem("Padding", paddingSelect),
+		),
 		widget.NewLabelWithStyle("Kunci", fyne.TextAlignCenter, fyne.TextStyle{}),
 		keyTypeSelect,
 		keyEntry,
@@ -214,7 +213,7 @@ func createAesTab(w fyne.Window) fyne.CanvasObject {
 
 	return container.NewBorder(
 		widget.NewLabel("AES"), nil,
-		container.NewStack(container.NewGridWrap(fyne.NewSize(300, 0)), leftLayout), nil,
+		container.NewPadded(container.NewGridWrap(fyne.NewSize(300, 0)), leftLayout), nil,
 		container.NewStack(container.NewGridWrap(fyne.NewSize(300, 0)), mainContainer),
 	)
 }
