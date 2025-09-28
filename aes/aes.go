@@ -1,6 +1,9 @@
 package aes
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 type AESVariant int
 
@@ -22,6 +25,7 @@ type aesRoundKey [][4]uint8
 // [kolom][baris]
 
 var ErrInvalidLength = errors.New("ukuran bytes tidak sesuai dengan ukuran blok")
+var ErrInvalidKeyLength = errors.New("ukuran kunci tidak valid")
 
 const nb uint8 = 4
 
@@ -29,7 +33,7 @@ var rcon [11]uint8 = [11]uint8{
 	0x8d, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36,
 }
 
-func NewAesContext(variant AESVariant, key []uint8) AesContext {
+func NewAesContext(variant AESVariant, key []uint8) (*AesContext, error) {
 	ctx := AesContext{}
 
 	switch variant {
@@ -44,8 +48,18 @@ func NewAesContext(variant AESVariant, key []uint8) AesContext {
 		ctx.roundCount = 14
 	}
 
+	if len(key) != int(4*ctx.keyLength) {
+		print(len(key))
+		return nil, errors.Join(
+			ErrInvalidKeyLength,
+			fmt.Errorf(
+				"dibutuhkan kunci sepanjang %d tetapi didapatkan kunci %d",
+				4*ctx.keyLength, len(key)),
+		)
+	}
+
 	ctx.keyExpansion(key)
-	return ctx
+	return &ctx, nil
 }
 
 func rotWord(data [4]uint8) [4]uint8 {
