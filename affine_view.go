@@ -90,16 +90,13 @@ func createAlfineTab(w fyne.Window) fyne.CanvasObject {
 				return
 			}
 			if !affineIsCoprime(keyA, mode) {
-				dialog.NewError(fmt.Errorf("kunci a tidak koprima dengan %s", affineGetModulo(mode)), w).Show()
+				dialog.NewError(fmt.Errorf("kunci a tidak koprima dengan %d", affineGetModulo(mode)), w).Show()
 				return
 			}
 
 			plain := []byte(plainEntry.Text)
-			encrypted, err := affineEncryptBytes(plain, keyA, keyB, mode)
+			encrypted := affineEncryptBytes(plain, keyA, keyB, mode)
 
-			if err != nil {
-				dialog.NewError(errors.Join(err), w).Show()
-			}
 			processTitle.SetText("Proses Enkripsi")
 			showProcess(plain, encrypted)
 			cipherEntry.SetText(string(encrypted))

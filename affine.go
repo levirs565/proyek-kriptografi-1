@@ -48,7 +48,7 @@ func affineGetCharIndex(b byte, mode AffineMode) (x int, startByte byte) {
 	return
 }
 
-func affineEncryptBytes(data []byte, keyA int, keyB int, mode AffineMode) ([]byte, error) {
+func affineEncryptBytes(data []byte, keyA int, keyB int, mode AffineMode) []byte {
 	result := make([]byte, len(data))
 	for i, b := range data {
 		x, startByte := affineGetCharIndex(b, mode)
@@ -59,7 +59,7 @@ func affineEncryptBytes(data []byte, keyA int, keyB int, mode AffineMode) ([]byt
 			result[i] = data[i]
 		}
 	}
-	return result, nil
+	return result
 }
 
 func affineDecryptChar(keyB int, y int, aInvers int, mode AffineMode) int {

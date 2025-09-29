@@ -169,8 +169,9 @@ func SuperEncrypt(rsaKey *RSAValues, bytes []uint8) ([]uint8, error) {
 	aesCtx.SetIv(iv)
 
 	caesarBytes := caesarEncryptBytes(bytes, int(c[0]), CaesarModeASCII, "")
+	affineBytes := affineEncryptBytes(caesarBytes, int(a), int(b[0]), AffineModeASCII)
 
-	encryptedBytes, err := aesCtx.EncryptECB(caesarBytes, aes.PKCS7Padding)
+	encryptedBytes, err := aesCtx.EncryptECB(affineBytes, aes.PKCS7Padding)
 
 	if err != nil {
 		return nil, err
@@ -213,8 +214,8 @@ func SuperDecrypt(rsaKey *RSAValues, bytes []uint8) ([]uint8, error) {
 	}
 
 	aesKey := rsaPlain[1:33]
-	// a := rsaPlain[33]
-	// b := rsaPlain[34]
+	a := rsaPlain[33]
+	b := rsaPlain[34]
 	c := rsaPlain[35]
 
 	aesCtx, err := aes.NewAesContext(aes.AES256, aesKey)
@@ -231,5 +232,7 @@ func SuperDecrypt(rsaKey *RSAValues, bytes []uint8) ([]uint8, error) {
 		return nil, err
 	}
 
-	return caesarDecryptBytes(aesPlain, int(c), CaesarModeASCII, ""), nil
+	affinePlain := affineDecryptBytes(aesPlain, int(a), int(b), AffineModeASCII)
+
+	return caesarDecryptBytes(affinePlain, int(c), CaesarModeASCII, ""), nil
 }
