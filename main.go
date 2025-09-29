@@ -13,7 +13,8 @@ func main() {
 		container.NewTabItem("Caesar Cipher", createCaesarTab(w)),
 		container.NewTabItem("Affine Cipher", createAlfineTab(w)),
 		container.NewTabItem("RSA Cipher", createRsaTab(w)),
-		container.NewTabItem("Advanced Encryption Standard", createAesTab(w)),
+		container.NewTabItem("AES Cipher", createAesTab(w)),
+		container.NewTabItem("Custom Super Cipher", createSuperTab(w)),
 	)
 	tabs.SetTabLocation(container.TabLocationLeading)
 

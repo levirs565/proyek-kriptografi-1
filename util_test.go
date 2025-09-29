@@ -36,3 +36,55 @@ func TestEncodeHex(t *testing.T) {
 		t.Errorf("Not match")
 	}
 }
+
+var encodeDecodeNameMap = []string{"Encode", "Decode"}
+
+func TestBase64(t *testing.T) {
+	list := []struct {
+		input  string
+		output string
+	}{
+		{
+			input:  "Hello World!",
+			output: "SGVsbG8gV29ybGQh",
+		}, {
+			input:  "hai halo",
+			output: "aGFpIGhhbG8=",
+		}, {
+			input:  "hai halohh",
+			output: "aGFpIGhhbG9oaA==",
+		},
+	}
+
+	for _, test := range list {
+		for i := range 2 {
+			encode := i == 0
+			t.Run(encodeDecodeNameMap[i], func(t *testing.T) {
+				input := test.input
+				output := test.output
+
+				if !encode {
+					input, output = output, input
+				}
+
+				var output_actual string
+				if encode {
+					output_actual = encodeBase64([]uint8(input))
+				} else {
+					o, err := decodeBase64(input)
+					if err != nil {
+						t.Error(err)
+						return
+					}
+					output_actual = string(o)
+				}
+
+				if output_actual != output {
+					t.Log(output)
+					t.Log(output_actual)
+					t.Errorf("Not match")
+				}
+			})
+		}
+	}
+}

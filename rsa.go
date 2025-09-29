@@ -39,6 +39,10 @@ func RSAGenerateKeys(bits int) (*RSAValues, error) {
 
 		n = new(big.Int).Mul(p, q)
 
+		if n.BitLen() != bits {
+			continue
+		}
+
 		pMinus1 := new(big.Int).Sub(p, one)
 		qMinus1 := new(big.Int).Sub(q, one)
 		phi = new(big.Int).Mul(pMinus1, qMinus1)
