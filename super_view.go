@@ -18,14 +18,11 @@ func createSuperTab(w fyne.Window) fyne.CanvasObject {
 }
 
 func createSuperKeyGenSubTab(w fyne.Window) fyne.CanvasObject {
-	privateKeyEntry := widget.NewMultiLineEntry()
-	publicKeyEntry := widget.NewMultiLineEntry()
+	privateKeyEntry := NewMultilineReadOnlyEntry()
+	publicKeyEntry := NewMultilineReadOnlyEntry()
 
 	privateKeyEntry.Wrapping = fyne.TextWrapBreak
 	publicKeyEntry.Wrapping = fyne.TextWrapBreak
-
-	privateKeyEntry.Disable()
-	publicKeyEntry.Disable()
 
 	generateButton := widget.NewButton("Generate Key", func() {
 		go func() {
@@ -54,11 +51,10 @@ func createSuperKeyGenSubTab(w fyne.Window) fyne.CanvasObject {
 func createSuperEncryptSubTab(w fyne.Window) fyne.CanvasObject {
 	publicKeyEntry := widget.NewEntry()
 	plainEntry := widget.NewMultiLineEntry()
-	cipherEntry := widget.NewMultiLineEntry()
+	cipherEntry := NewMultilineReadOnlyEntry()
 
 	plainEntry.Wrapping = fyne.TextWrapBreak
 	cipherEntry.Wrapping = fyne.TextWrapBreak
-	cipherEntry.Disable()
 
 	buttonEncrypt := widget.NewButton("Encrypt", func() {
 		key, err := SuperDecodePublicKey(publicKeyEntry.Text)
@@ -99,12 +95,11 @@ func createSuperEncryptSubTab(w fyne.Window) fyne.CanvasObject {
 }
 func createSuperDecryptSubTab(w fyne.Window) fyne.CanvasObject {
 	privateKeyEntry := widget.NewEntry()
-	plainEntry := widget.NewMultiLineEntry()
+	plainEntry := NewMultilineReadOnlyEntry()
 	cipherEntry := widget.NewMultiLineEntry()
 
 	plainEntry.Wrapping = fyne.TextWrapBreak
 	cipherEntry.Wrapping = fyne.TextWrapBreak
-	plainEntry.Disable()
 
 	buttonEncrypt := widget.NewButton("Decrypt", func() {
 		key, err := SuperDecodePrivateKey(privateKeyEntry.Text)
