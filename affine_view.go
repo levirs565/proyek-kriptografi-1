@@ -15,11 +15,10 @@ import (
 func createAlfineTab(w fyne.Window) fyne.CanvasObject {
 	keyEntryA := widget.NewEntry()
 	keyEntryB := widget.NewEntry()
-	
 
 	plainEntry := widget.NewMultiLineEntry()
 	cipherEntry := widget.NewMultiLineEntry()
-	
+
 	customCharsetEntry := widget.NewEntry()
 	customCharsetEntry.SetPlaceHolder("Masukkan karakter custom...")
 	customCharsetEntry.Hide()
@@ -35,13 +34,12 @@ func createAlfineTab(w fyne.Window) fyne.CanvasObject {
 	processTitle := widget.NewLabel("Proses")
 	processGrid := container.NewGridWrap(fyne.NewSize(30, 70))
 	processPanel := container.NewBorder(processTitle, nil, nil, nil, container.NewVScroll(processGrid))
-	mainContainer := container.New(
-		NewFlexibleLayout(),
-		container.NewGridWithRows(2,
+	mainContainer := NewFlexibleColumn(
+		NewFlexibleItem(true, container.NewGridWithRows(2,
 			container.NewBorder(widget.NewLabel("Plain Teks"), nil, nil, nil, plainEntry),
 			container.NewBorder(widget.NewLabel("Cipher Teks"), nil, nil, nil, cipherEntry),
-		),
-		processPanel,
+		)),
+		NewFlexibleItem(true, processPanel),
 	)
 
 	processPanel.Hide()
@@ -76,11 +74,11 @@ func createAlfineTab(w fyne.Window) fyne.CanvasObject {
 	getKeyInt := func() (int, int, bool) {
 		res1, err1 := strconv.Atoi(keyEntryA.Text)
 		res2, err2 := strconv.Atoi(keyEntryB.Text)
-		if err1 != nil  {
+		if err1 != nil {
 			dialog.NewError(err1, w).Show()
 			return res1, res2, false
 		}
-		if err2 != nil  {
+		if err2 != nil {
 			dialog.NewError(err2, w).Show()
 			return res1, res2, false
 		}

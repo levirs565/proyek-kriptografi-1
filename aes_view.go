@@ -13,10 +13,10 @@ import (
 )
 
 var ErrKunciHex = errors.New("gagal mendecode Hex kunci")
-var ErrPlainEncode = errors.New("gagal encode hex plain")
-var ErrPlainDecode = errors.New("gagal decode hex plain")
-var ErrCipherEncode = errors.New("gagal encode hex cipher")
-var ErrCipherDecode = errors.New("gagal decode hex cipher")
+var ErrPlainEncode = errors.New("gagal encode plain")
+var ErrPlainDecode = errors.New("gagal decode plain")
+var ErrCipherEncode = errors.New("gagal encode cipher")
+var ErrCipherDecode = errors.New("gagal decode cipher")
 var ErrDecrypt = errors.New("gagal decrypt")
 var ErrEncrypt = errors.New("gagal encrypt")
 var ErrIvLength = errors.New("ukuran iv harus 16 byte")
@@ -34,12 +34,17 @@ func createAesTab(w fyne.Window) fyne.CanvasObject {
 	paddingMap := []aes.Padding{aes.PKCS7Padding, aes.NoPadding}
 
 	keyTypeSelect := widget.NewSelect(inputTypes, func(s string) {})
-	keyEntry := widget.NewEntry()
+	keyEntry := widget.NewMultiLineEntry()
 	ivLabel := widget.NewLabelWithStyle("Initialization Vector (Hex)", fyne.TextAlignCenter, fyne.TextStyle{})
-	ivEntry := widget.NewEntry()
+	ivEntry := widget.NewMultiLineEntry()
 	plainEntry := widget.NewMultiLineEntry()
 	plainTypeSelect := widget.NewSelect(inputTypes, func(s string) {})
 	cipherEntry := widget.NewMultiLineEntry()
+
+	keyEntry.Wrapping = fyne.TextWrapBreak
+	ivEntry.Wrapping = fyne.TextWrapBreak
+	plainEntry.Wrapping = fyne.TextWrapBreak
+	cipherEntry.Wrapping = fyne.TextWrapBreak
 
 	generateIvButton := widget.NewButton("Random IV", func() {
 		var iv [16]uint8
@@ -69,7 +74,7 @@ func createAesTab(w fyne.Window) fyne.CanvasObject {
 
 	mainContainer := container.NewGridWithRows(2,
 		container.NewBorder(
-			container.NewVBox(widget.NewLabel("Plain Teks"), plainTypeSelect),
+			container.NewHBox(widget.NewLabel("Plain Teks"), plainTypeSelect),
 			nil, nil, nil, plainEntry,
 		),
 		container.NewBorder(widget.NewLabel("Cipher Teks (Hex)"), nil, nil, nil, cipherEntry),
@@ -211,9 +216,9 @@ func createAesTab(w fyne.Window) fyne.CanvasObject {
 		}),
 	)
 
-	return container.NewBorder(
+	return container.NewPadded(container.NewBorder(
 		widget.NewLabel("AES"), nil,
-		container.NewPadded(container.NewGridWrap(fyne.NewSize(300, 0)), leftLayout), nil,
+		container.NewStack(container.NewGridWrap(fyne.NewSize(300, 0)), leftLayout), nil,
 		container.NewStack(container.NewGridWrap(fyne.NewSize(300, 0)), mainContainer),
-	)
+	))
 }

@@ -30,13 +30,12 @@ func createCaesarTab(w fyne.Window) fyne.CanvasObject {
 	processTitle := widget.NewLabel("Proses")
 	processGrid := container.NewGridWrap(fyne.NewSize(30, 70))
 	processPanel := container.NewBorder(processTitle, nil, nil, nil, container.NewVScroll(processGrid))
-	mainContainer := container.New(
-		NewFlexibleLayout(),
-		container.NewGridWithRows(2,
+	mainContainer := NewFlexibleColumn(
+		NewFlexibleItem(true, container.NewGridWithRows(2,
 			container.NewBorder(widget.NewLabel("Plain Teks"), nil, nil, nil, plainEntry),
 			container.NewBorder(widget.NewLabel("Cipher Teks"), nil, nil, nil, cipherEntry),
-		),
-		processPanel,
+		)),
+		NewFlexibleItem(true, processPanel),
 	)
 
 	processPanel.Hide()
@@ -89,7 +88,6 @@ func createCaesarTab(w fyne.Window) fyne.CanvasObject {
 				return
 			}
 
-			
 			plain := []byte(plainEntry.Text)
 			encrypted := caesarEncryptBytes(plain, key, modeSelect.Selected, customCharsetEntry.Text)
 			processTitle.SetText("Proses Enkripsi")
@@ -110,8 +108,8 @@ func createCaesarTab(w fyne.Window) fyne.CanvasObject {
 		showProcessCheck,
 	)
 
-	return container.NewBorder(
+	return container.NewPadded(container.NewBorder(
 		widget.NewLabel("Caesar"), nil, middleLayout, nil,
 		mainContainer,
-	)
+	))
 }

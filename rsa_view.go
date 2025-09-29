@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"math/big"
@@ -9,14 +10,19 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 )
 
-func createRsaTab() fyne.CanvasObject {
+var ErrRSAEDecode = errors.New("gagal decode E")
+var ErrRSADDecode = errors.New("gagal decode D")
+var ErrRSANDecode = errors.New("gagal decode N")
+
+func createRsaTab(w fyne.Window) fyne.CanvasObject {
 	return container.NewAppTabs(
 		container.NewTabItem("Generate Key", createKeyGenSubTab()),
-		container.NewTabItem("Enkripsi", createEncryptSubTab()),
-		container.NewTabItem("Dekripsi", createDecryptSubTab()),
+		container.NewTabItem("Enkripsi", createEncryptSubTab(w)),
+		container.NewTabItem("Dekripsi", createDecryptSubTab(w)),
 	)
 }
 
@@ -24,15 +30,31 @@ func createKeyGenSubTab() fyne.CanvasObject {
 	keySizeSelect := widget.NewSelect([]string{"512 bit (Tidak Aman)", "1024 bit", "2048 bit", "3072 bit", "4096 bit"}, nil)
 	keySizeSelect.SetSelected("2048 bit")
 
-	pOut := widget.NewMultiLineEntry(); pOut.SetPlaceHolder("Bilangan prima P..."); pOut.Disable()
-	qOut := widget.NewMultiLineEntry(); qOut.SetPlaceHolder("Bilangan prima Q..."); qOut.Disable()
-	nOut := widget.NewMultiLineEntry(); nOut.SetPlaceHolder("Modulus N..."); nOut.Disable()
-	eOut := widget.NewMultiLineEntry(); eOut.SetPlaceHolder("Public Exponent E..."); eOut.Disable()
-	dOut := widget.NewMultiLineEntry(); dOut.SetPlaceHolder("Private Exponent D..."); dOut.Disable()
+	pEntry := widget.NewMultiLineEntry()
+	qEntry := widget.NewMultiLineEntry()
+	nEntry := widget.NewMultiLineEntry()
+	eEntry := widget.NewEntry()
+	dEntry := widget.NewMultiLineEntry()
 
-	generateButton := widget.NewButton("GENERATE RSA KEY PAIR", func() {
-		pOut.SetText(""); qOut.SetText(""); nOut.SetText(""); eOut.SetText(""); dOut.SetText("")
-		
+	pEntry.Wrapping = fyne.TextWrapBreak
+	qEntry.Wrapping = fyne.TextWrapBreak
+	nEntry.Wrapping = fyne.TextWrapBreak
+	dEntry.Wrapping = fyne.TextWrapBreak
+
+	pEntry.Disable()
+	qEntry.Disable()
+	nEntry.Disable()
+	eEntry.Disable()
+	dEntry.Disable()
+
+	var generateButton *widget.Button
+	generateButton = widget.NewButton("GENERATE RSA KEY PAIR", func() {
+		pEntry.SetText("")
+		qEntry.SetText("")
+		nEntry.SetText("")
+		eEntry.SetText("")
+		dEntry.SetText("")
+
 		selected := keySizeSelect.Selected
 		bitStr := strings.Split(selected, " ")[0]
 		bits, err := strconv.Atoi(bitStr)
@@ -41,78 +63,176 @@ func createKeyGenSubTab() fyne.CanvasObject {
 			return
 		}
 
-		pOut.SetText(fmt.Sprintf("Menghasilkan kunci %d bit... (mungkin butuh beberapa detik)", bits))
-		
+		pEntry.SetText(fmt.Sprintf("Menghasilkan kunci %d bit... (mungkin butuh beberapa detik)", bits))
+
+		generateButton.Disable()
 		go func() {
-			vals, err := GenerateKeys(bits)
+			vals, err := RSAGenerateKeys(bits)
 			if err != nil {
-				dOut.SetText(fmt.Sprintf("Error: %v", err))
+				dEntry.SetText(fmt.Sprintf("Error: %v", err))
 				return
 			}
-			
-			pOut.SetText(vals.P.String())
-			qOut.SetText(vals.Q.String())
-			nOut.SetText(vals.N.String())
-			eOut.SetText(vals.E.String())
-			dOut.SetText(vals.D.String())
+
+			fyne.Do(func() {
+				pEntry.SetText(vals.P.String())
+				qEntry.SetText(vals.Q.String())
+				nEntry.SetText(vals.N.String())
+				eEntry.SetText(vals.E.String())
+				dEntry.SetText(vals.D.String())
+				generateButton.Enable()
+			})
 		}()
 	})
 
-	form := &widget.Form{
-		Items: []*widget.FormItem{
-			{Text: "Ukuran Kunci", Widget: keySizeSelect},
-			{Text: "Bilangan Prima P", Widget: pOut},
-			{Text: "Bilangan Prima Q", Widget: qOut},
-			{Text: "Modulus N (Publik)", Widget: nOut},
-			{Text: "Exponent E (Publik)", Widget: eOut},
-			{Text: "Exponent D (Privat)", Widget: dOut},
-		},
+	return container.NewPadded(container.NewVBox(
+		container.NewHBox(
+			widget.NewLabel("Ukuran Kunci"), keySizeSelect, generateButton,
+		),
+		widget.NewForm(
+			widget.NewFormItem("Bilangan Prima P", pEntry),
+			widget.NewFormItem("Bilangan Prima Q", qEntry),
+			widget.NewFormItem("Modulus N (Publik)", nEntry),
+			widget.NewFormItem("Exponent E (Publik)", eEntry),
+			widget.NewFormItem("Exponent D (Privat)", dEntry),
+		),
+	))
+}
+
+func parseBigNumberInput(entry *widget.Entry) (*big.Int, error) {
+	if entry.Text == "" {
+		return nil, fmt.Errorf("input kosong")
 	}
-	
-	return container.NewVBox(
-		widget.NewLabel("Pilih ukuran kunci dan klik generate untuk membuat pasangan kunci baru."),
-		generateButton,
-		form,
+	val, ok := new(big.Int).SetString(entry.Text, 10)
+	if !ok {
+		return nil, fmt.Errorf("input tidak valid: %s", entry.Text)
+	}
+	return val, nil
+}
+
+func createEncryptSubTab(w fyne.Window) fyne.CanvasObject {
+	plainEntry := widget.NewMultiLineEntry()
+	eEntry := widget.NewEntry()
+	nEntry := widget.NewEntry()
+	cipherEntry := widget.NewMultiLineEntry()
+	cipherEntry.Wrapping = fyne.TextWrapWord
+	cipherEntry.Disable()
+
+	plainTypeSelect := widget.NewSelect(inputTypes, func(s string) {})
+	plainTypeSelect.SetSelectedIndex(0)
+
+	encryptButton := widget.NewButton("Enkripsi", func() {
+		e, err := parseBigNumberInput(eEntry)
+		if err != nil {
+			dialog.NewError(errors.Join(ErrRSAEDecode, err), w).Show()
+		}
+		n, err := parseBigNumberInput(nEntry)
+		if err != nil {
+			dialog.NewError(errors.Join(ErrRSANDecode, err), w).Show()
+		}
+		m := new(big.Int)
+		if plainTypeSelect.SelectedIndex() == 0 {
+			m.SetBytes([]byte(plainEntry.Text))
+		} else {
+			bytes, err := decodeHexString(plainEntry.Text)
+			if err != nil {
+				dialog.NewError(errors.Join(ErrPlainDecode, err), w).Show()
+			}
+			m.SetBytes(bytes)
+		}
+		c, err := RSAEncrypt(m, e, n)
+		if err != nil {
+			dialog.NewError(errors.Join(ErrEncrypt, err), w).Show()
+			return
+		}
+		cipherEntry.SetText(c.String())
+	})
+
+	form := widget.NewForm(
+		widget.NewFormItem("Public Key (E)", eEntry),
+		widget.NewFormItem("Modulus (N)", nEntry),
 	)
+	mainContainer := NewFlexibleRow(
+		NewFlexibleItem(true, container.NewBorder(
+			container.NewHBox(widget.NewLabel("Plain"), plainTypeSelect),
+			nil, nil, nil,
+			plainEntry,
+		)),
+		NewFlexibleItem(false, encryptButton),
+		NewFlexibleItem(true, container.NewBorder(
+			widget.NewLabel("Cipher (Number)"),
+			nil, nil, nil,
+			cipherEntry,
+		)),
+	)
+	return container.NewPadded(container.NewBorder(
+		form,
+		nil, nil, nil,
+		mainContainer,
+	))
 }
 
-func createEncryptSubTab() fyne.CanvasObject {
-	messageEntry := widget.NewEntry(); messageEntry.SetPlaceHolder("Tulis pesan Anda di sini")
-	eEntry := widget.NewEntry(); eEntry.SetPlaceHolder("Kunci Publik E")
-	nEntry := widget.NewEntry(); nEntry.SetPlaceHolder("Modulus N")
-	outputArea := widget.NewMultiLineEntry(); outputArea.SetPlaceHolder("Ciphertext (hasil enkripsi) akan ditampilkan di sini..."); outputArea.Wrapping = fyne.TextWrapWord; outputArea.Disable()
-	parseInput := func(entry *widget.Entry) *big.Int { if entry.Text == "" { return nil }; val, ok := new(big.Int).SetString(entry.Text, 10); if !ok { log.Printf("Input tidak valid: %s", entry.Text); return nil }; return val }
-	encryptButton := widget.NewButton("ENKRIPSI", func() {
-		message := messageEntry.Text; e := parseInput(eEntry); n := parseInput(nEntry)
-		if message == "" || e == nil || n == nil { outputArea.SetText("Error: Pesan, E, dan N harus diisi."); return }
-		m := StringToBigInt(message)
-		c, err := Encrypt(m, e, n); if err != nil { outputArea.SetText(fmt.Sprintf("Error saat enkripsi: %v", err)); return }
-		outputArea.SetText(fmt.Sprintf("Ciphertext (Integer):\n%s", c.String()))
-	})
-	form := &widget.Form{ Items: []*widget.FormItem{ {Text: "PESAN (M)", Widget: messageEntry}, {Text: "PUBLIC KEY (E)", Widget: eEntry}, {Text: "MODULUS (N)", Widget: nEntry}, }}
-	return container.NewBorder( container.NewVBox( widget.NewLabel("Masukkan pesan dan Kunci Publik (E, N) untuk mengenkripsi."), form, encryptButton, ), nil, nil, nil, outputArea,)
-}
-
-func createDecryptSubTab() fyne.CanvasObject {
-	cEntry := widget.NewEntry(); cEntry.SetPlaceHolder("Ciphertext (Integer)")
-	eEntry := widget.NewEntry(); eEntry.SetPlaceHolder("Contoh: 65537 atau 17")
-	nEntry := widget.NewEntry(); nEntry.SetPlaceHolder("Integer (Hasil p * q)")
-	dEntry := widget.NewEntry(); dEntry.SetPlaceHolder("Dihitung dari E dan PHI")
-	pEntry := widget.NewEntry(); pEntry.SetPlaceHolder("Bilangan prima")
-	qEntry := widget.NewEntry(); qEntry.SetPlaceHolder("Bilangan prima")
-	phiEntry := widget.NewEntry(); phiEntry.SetPlaceHolder("Dihitung dari P dan Q")
-	outputArea := widget.NewMultiLineEntry(); outputArea.SetPlaceHolder("Hasil akan ditampilkan di sini..."); outputArea.Wrapping = fyne.TextWrapWord; outputArea.Disable()
-	displayMode := widget.NewRadioGroup([]string{"String", "Integer", "Hex", "Computed Values"}, nil); displayMode.SetSelected("String")
-	parseInput := func(entry *widget.Entry) *big.Int { if entry.Text == "" { return nil }; val, ok := new(big.Int).SetString(entry.Text, 10); if !ok { log.Printf("Input tidak valid: %s", entry.Text); return nil }; return val }
-	calculateButton := widget.NewButton("► KALKULASI / DEKRIPSI", func() {
-		outputArea.SetText("Menghitung..."); vals := RSAValues{ C: parseInput(cEntry), E: parseInput(eEntry), N: parseInput(nEntry), D: parseInput(dEntry), P: parseInput(pEntry), Q: parseInput(qEntry)}; if err := vals.CalculateMissingValues(); err != nil { outputArea.SetText(fmt.Sprintf("Error: %v", err)); return }
-		if vals.N != nil { nEntry.SetText(vals.N.String()) }; if vals.D != nil { dEntry.SetText(vals.D.String()) }; if vals.Phi != nil { phiEntry.SetText(vals.Phi.String()) }
-		m, err := Decrypt(vals.C, vals.D, vals.N)
-		if err != nil { computedVals := "Input tidak cukup untuk dekripsi.\nNilai yang berhasil dihitung:\n"; if vals.N != nil { computedVals += fmt.Sprintf("  N = %s\n", vals.N.String()) }; if vals.Phi != nil { computedVals += fmt.Sprintf("  Φ = %s\n", vals.Phi.String()) }; if vals.D != nil { computedVals += fmt.Sprintf("  D = %s\n", vals.D.String()) }; outputArea.SetText(computedVals); return }
+func createDecryptSubTab(w fyne.Window) fyne.CanvasObject {
+	cipherEntry := widget.NewEntry()
+	nEntry := widget.NewEntry()
+	nEntry.SetPlaceHolder("")
+	dEntry := widget.NewEntry()
+	dEntry.SetPlaceHolder("")
+	plainEntry := widget.NewMultiLineEntry()
+	plainEntry.Wrapping = fyne.TextWrapBreak
+	plainEntry.Disable()
+	plainTypeSelect := widget.NewSelect(inputTypes, nil)
+	plainTypeSelect.SetSelectedIndex(0)
+	calculateButton := widget.NewButton("Dekripsi", func() {
+		D, err := parseBigNumberInput(dEntry)
+		if err != nil {
+			dialog.NewError(errors.Join(ErrRSADDecode), w).Show()
+			return
+		}
+		N, err := parseBigNumberInput(nEntry)
+		if err != nil {
+			dialog.NewError(errors.Join(ErrRSANDecode), w).Show()
+			return
+		}
+		cipher, err := parseBigNumberInput(cipherEntry)
+		if err != nil {
+			dialog.NewError(errors.Join(ErrCipherDecode), w).Show()
+			return
+		}
+		plain, err := RSADecrypt(cipher, D, N)
+		if err != nil {
+			dialog.NewError(errors.Join(ErrDecrypt, err), w).Show()
+			return
+		}
 		var result string
-		switch displayMode.Selected { case "String": result = fmt.Sprintf("Plaintext (String):\n%s", BigIntToString(m)); case "Integer": result = fmt.Sprintf("Plaintext (Integer):\n%s", m.String()); case "Hex": result = fmt.Sprintf("Plaintext (Hexadecimal):\n0x%x", m); case "Computed Values": result = fmt.Sprintf("Nilai yang Dihitung:\nN = %s\nΦ = %s\nD = %s", vals.N.String(), vals.Phi.String(), vals.D.String()) }
-		outputArea.SetText(result)
+		if plainTypeSelect.SelectedIndex() == 0 {
+			result = string(plain.Bytes())
+		} else {
+			result, err = encodeHexString(plain.Bytes())
+			if err != nil {
+				dialog.NewError(errors.Join(ErrPlainEncode, err), w).Show()
+				return
+			}
+		}
+		plainEntry.SetText(result)
 	})
-	form := &widget.Form{ Items: []*widget.FormItem{ {Text: "CIPHERTEXT (C)", Widget: cEntry}, {Text: "PUBLIC KEY (E)", Widget: eEntry}, {Text: "MODULUS (N)", Widget: nEntry}, {Text: "PRIVATE KEY (D)", Widget: dEntry}, {Text: "FAKTOR 1 (P)", Widget: pEntry}, {Text: "FAKTOR 2 (Q)", Widget: qEntry}, {Text: "NILAI PHI (Φ)", Widget: phiEntry}, }}
-	return container.NewBorder( container.NewVBox( widget.NewLabel("Masukkan nilai yang diketahui untuk melakukan dekripsi/kalkulasi."), form, displayMode, calculateButton, ), nil, nil, nil, outputArea,)
+	form := widget.NewForm(
+		widget.NewFormItem("Modulus (N)", nEntry),
+		widget.NewFormItem("Private Key (D)", dEntry),
+	)
+	return container.NewPadded(container.NewBorder(
+		form, nil, nil, nil,
+		NewFlexibleRow(
+			NewFlexibleItem(true, container.NewBorder(
+				widget.NewLabel("Ciphertext/C (Integer)"),
+				nil, nil, nil,
+				cipherEntry,
+			)),
+			NewFlexibleItem(false, calculateButton),
+			NewFlexibleItem(true, container.NewBorder(
+				container.NewHBox(widget.NewLabel("Plain"), plainTypeSelect),
+				nil, nil, nil,
+				plainEntry,
+			)),
+		),
+	))
 }
