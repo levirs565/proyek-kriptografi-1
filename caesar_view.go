@@ -24,6 +24,7 @@ func createCaesarTab(w fyne.Window) fyne.CanvasObject {
 				customCharsetEntry.Hide()
 			}
 		})
+	modeMap := []CaesarMode{CaesarModeAlphabet, CaesarModeAlphanum, CaesarModeASCII, CaesarModeCustom}
 	modeSelect.SetSelected("Alfabet (A-Z)")
 	plainEntry := widget.NewMultiLineEntry()
 	cipherEntry := widget.NewMultiLineEntry()
@@ -89,7 +90,7 @@ func createCaesarTab(w fyne.Window) fyne.CanvasObject {
 			}
 
 			plain := []byte(plainEntry.Text)
-			encrypted := caesarEncryptBytes(plain, key, modeSelect.Selected, customCharsetEntry.Text)
+			encrypted := caesarEncryptBytes(plain, key, modeMap[modeSelect.SelectedIndex()], customCharsetEntry.Text)
 			processTitle.SetText("Proses Enkripsi")
 			showProcess(plain, encrypted)
 			cipherEntry.SetText(string(encrypted))
@@ -100,7 +101,7 @@ func createCaesarTab(w fyne.Window) fyne.CanvasObject {
 				return
 			}
 			encrypted := []byte(cipherEntry.Text)
-			plain := caesarDecryptBytes(encrypted, key, modeSelect.Selected, customCharsetEntry.Text)
+			plain := caesarDecryptBytes(encrypted, key, modeMap[modeSelect.SelectedIndex()], customCharsetEntry.Text)
 			processTitle.SetText("Proses Dekripsi")
 			showProcess(encrypted, plain)
 			plainEntry.SetText(string(plain))

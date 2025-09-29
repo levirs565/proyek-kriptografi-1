@@ -1,5 +1,14 @@
 package main
 
+type CaesarMode int
+
+const (
+	CaesarModeAlphabet = iota
+	CaesarModeAlphanum
+	CaesarModeASCII
+	CaesarModeCustom
+)
+
 func caesarShiftAlphaByte(data byte, shift int) byte { //fungsi menggeser alfabet(a-z)
 	if data >= 'a' && data <= 'z' {
 		return 'a' + byte(safeIntShift(int(data-'a'), shift, 26)) // 'a' itu valuenya 97
@@ -21,7 +30,7 @@ func caesarShiftAlphaNumByte(data byte, shift int) byte { //fungsi menggeser alf
 }
 
 func caesarShiftAsciiByte(data byte, shift int) byte { //fungsi menggeser karakter ascii
-	return byte(safeIntShift(int(data), shift, 128))
+	return byte(safeIntShift(int(data), shift, 256))
 }
 
 func caesarShiftCustomByte(data byte, shift int, charset string) byte {
@@ -41,17 +50,17 @@ func caesarShiftCustomByte(data byte, shift int, charset string) byte {
 	return charset[newIndex]
 }
 
-func caesarEncryptBytes(data []byte, key int, caesarOption string, customCharset string) []byte {
+func caesarEncryptBytes(data []byte, key int, mode CaesarMode, customCharset string) []byte {
 	result := make([]byte, len(data))
 	for i, v := range data {
-		switch caesarOption {
-		case "Alfabet (A-Z)":
+		switch mode {
+		case CaesarModeAlphabet:
 			result[i] = caesarShiftAlphaByte(v, key)
-		case "Alphanum (A-Z dan 0-9)":
+		case CaesarModeAlphanum:
 			result[i] = caesarShiftAlphaNumByte(v, key)
-		case "ASCII":
+		case CaesarModeASCII:
 			result[i] = caesarShiftAsciiByte(v, key)
-		case "Custom karakter":
+		case CaesarModeCustom:
 			result[i] = caesarShiftCustomByte(v, key, customCharset)
 		default:
 			result[i] = v
@@ -60,6 +69,6 @@ func caesarEncryptBytes(data []byte, key int, caesarOption string, customCharset
 	return result
 }
 
-func caesarDecryptBytes(data []byte, key int, caesarOption string, customCharset string) []byte {
-	return caesarEncryptBytes(data, -key, caesarOption, customCharset)
+func caesarDecryptBytes(data []byte, key int, mode CaesarMode, customCharset string) []byte {
+	return caesarEncryptBytes(data, -key, mode, customCharset)
 }
