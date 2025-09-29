@@ -15,6 +15,13 @@ func safeIntShift(data, shift, mod int) int {
 	return ((data % mod) + mod + (shift % mod) + mod) % mod
 }
 
+func GCD(a, b int) int {
+	for b != 0 {
+		a, b = b, a%b
+	}
+	return a
+}
+
 func isAlphabet(char byte) bool {
 	return (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'B')
 }

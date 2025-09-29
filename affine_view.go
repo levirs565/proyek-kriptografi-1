@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 
 	"fyne.io/fyne/v2"
@@ -18,18 +19,9 @@ func createAlfineTab(w fyne.Window) fyne.CanvasObject {
 
 	plainEntry := widget.NewMultiLineEntry()
 	cipherEntry := widget.NewMultiLineEntry()
-	customCharsetEntry := widget.NewEntry()
-	customCharsetEntry.SetPlaceHolder("Masukkan karakter custom...")
-	customCharsetEntry.Hide()
-	modeSelect := widget.NewSelect([]string{"Alfabet (A-Z)", "Alphanum (A-Z dan 0-9)", "ASCII", "Custom karakter"},
-		func(value string) {
-			if value == "Custom karakter" {
-				customCharsetEntry.Show()
-			} else {
-				customCharsetEntry.Hide()
-			}
-		})
-	modeSelect.SetSelected("Alfabet (A-Z)")
+	modeSelect := widget.NewSelect([]string{"Alfabet (A-Z)", "ASCII"}, nil)
+	modeMap := []AffineMode{AffineModeAlphabet, AffineModeASCII}
+	modeSelect.SetSelectedIndex(0)
 	processTitle := widget.NewLabel("Proses")
 	processGrid := container.NewGridWrap(fyne.NewSize(30, 70))
 	processPanel := container.NewBorder(processTitle, nil, nil, nil, container.NewVScroll(processGrid))
@@ -74,11 +66,9 @@ func createAlfineTab(w fyne.Window) fyne.CanvasObject {
 		res1, err1 := strconv.Atoi(keyEntryA.Text)
 		res2, err2 := strconv.Atoi(keyEntryB.Text)
 		if err1 != nil {
-			dialog.NewError(err1, w).Show()
 			return res1, res2, false
 		}
 		if err2 != nil {
-			dialog.NewError(err2, w).Show()
 			return res1, res2, false
 		}
 
@@ -92,19 +82,20 @@ func createAlfineTab(w fyne.Window) fyne.CanvasObject {
 		keyEntryB,
 		widget.NewLabelWithStyle("Opsi Affine", fyne.TextAlignCenter, fyne.TextStyle{}), // <<<--- ditambahkan
 		modeSelect,
-		customCharsetEntry,
 		widget.NewButton("Enkripsi", func() {
 			keyA, keyB, success := getKeyInt()
+			mode := modeMap[modeSelect.SelectedIndex()]
 			if !success {
 				dialog.NewError(errors.New("kunci a dan kunci b harus berupa angka"), w).Show()
 				return
 			}
-			if !isKoprima(keyA, modeSelect.Selected) {
-				dialog.NewError(errors.New("kunci a tidak koprima dengan 255"), w).Show()
+			if !affineIsCoprime(keyA, mode) {
+				dialog.NewError(fmt.Errorf("kunci a tidak koprima dengan %s", affineGetModulo(mode)), w).Show()
+				return
 			}
 
 			plain := []byte(plainEntry.Text)
-			encrypted, err := affineEncryptBytes(plain, keyA, keyB, modeSelect.Selected)
+			encrypted, err := affineEncryptBytes(plain, keyA, keyB, mode)
 
 			if err != nil {
 				dialog.NewError(errors.Join(err), w).Show()
@@ -115,12 +106,14 @@ func createAlfineTab(w fyne.Window) fyne.CanvasObject {
 		}),
 		widget.NewButton("Dekripsi", func() {
 			keyA, keyB, success := getKeyInt()
+			mode := modeMap[modeSelect.SelectedIndex()]
+
 			if !success {
 				return
 			}
 
 			encrypted := []byte(cipherEntry.Text)
-			plain := affineDecryptBytes(encrypted, keyA, keyB)
+			plain := affineDecryptBytes(encrypted, keyA, keyB, mode)
 			processTitle.SetText("Proses Dekripsi")
 			showProcess(encrypted, plain)
 			plainEntry.SetText(string(plain))
