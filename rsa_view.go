@@ -30,22 +30,16 @@ func createKeyGenSubTab() fyne.CanvasObject {
 	keySizeSelect := widget.NewSelect([]string{"512 bit (Tidak Aman)", "1024 bit", "2048 bit", "3072 bit", "4096 bit"}, nil)
 	keySizeSelect.SetSelected("2048 bit")
 
-	pEntry := widget.NewMultiLineEntry()
-	qEntry := widget.NewMultiLineEntry()
-	nEntry := widget.NewMultiLineEntry()
-	eEntry := widget.NewEntry()
-	dEntry := widget.NewMultiLineEntry()
+	pEntry := NewMultilineReadOnlyEntry()
+	qEntry := NewMultilineReadOnlyEntry()
+	nEntry := NewMultilineReadOnlyEntry()
+	eEntry := NewReadOnlyEntry()
+	dEntry := NewMultilineReadOnlyEntry()
 
 	pEntry.Wrapping = fyne.TextWrapBreak
 	qEntry.Wrapping = fyne.TextWrapBreak
 	nEntry.Wrapping = fyne.TextWrapBreak
 	dEntry.Wrapping = fyne.TextWrapBreak
-
-	pEntry.Disable()
-	qEntry.Disable()
-	nEntry.Disable()
-	eEntry.Disable()
-	dEntry.Disable()
 
 	var generateButton *widget.Button
 	generateButton = widget.NewButton("GENERATE RSA KEY PAIR", func() {
@@ -113,9 +107,10 @@ func createEncryptSubTab(w fyne.Window) fyne.CanvasObject {
 	plainEntry := widget.NewMultiLineEntry()
 	eEntry := widget.NewEntry()
 	nEntry := widget.NewEntry()
-	cipherEntry := widget.NewMultiLineEntry()
+
+	cipherEntry := NewMultilineReadOnlyEntry()
+	plainEntry.Wrapping = fyne.TextWrapWord
 	cipherEntry.Wrapping = fyne.TextWrapWord
-	cipherEntry.Disable()
 
 	plainTypeSelect := widget.NewSelect(inputTypes, func(s string) {})
 	plainTypeSelect.SetSelectedIndex(0)
@@ -172,14 +167,16 @@ func createEncryptSubTab(w fyne.Window) fyne.CanvasObject {
 }
 
 func createDecryptSubTab(w fyne.Window) fyne.CanvasObject {
-	cipherEntry := widget.NewEntry()
+	cipherEntry := widget.NewMultiLineEntry()
 	nEntry := widget.NewEntry()
 	nEntry.SetPlaceHolder("")
 	dEntry := widget.NewEntry()
 	dEntry.SetPlaceHolder("")
-	plainEntry := widget.NewMultiLineEntry()
+	plainEntry := NewMultilineReadOnlyEntry()
+
 	plainEntry.Wrapping = fyne.TextWrapBreak
-	plainEntry.Disable()
+	cipherEntry.Wrapping = fyne.TextWrapBreak
+
 	plainTypeSelect := widget.NewSelect(inputTypes, nil)
 	plainTypeSelect.SetSelectedIndex(0)
 	calculateButton := widget.NewButton("Dekripsi", func() {
