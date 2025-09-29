@@ -18,7 +18,6 @@ func createAlfineTab(w fyne.Window) fyne.CanvasObject {
 
 	plainEntry := widget.NewMultiLineEntry()
 	cipherEntry := widget.NewMultiLineEntry()
-
 	customCharsetEntry := widget.NewEntry()
 	customCharsetEntry.SetPlaceHolder("Masukkan karakter custom...")
 	customCharsetEntry.Hide()
@@ -93,6 +92,7 @@ func createAlfineTab(w fyne.Window) fyne.CanvasObject {
 		keyEntryB,
 		widget.NewLabelWithStyle("Opsi Affine", fyne.TextAlignCenter, fyne.TextStyle{}), // <<<--- ditambahkan
 		modeSelect,
+		customCharsetEntry,
 		widget.NewButton("Enkripsi", func() {
 			keyA, keyB, success := getKeyInt()
 			if !success {
