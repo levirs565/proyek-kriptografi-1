@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"strconv"
 
 	"fyne.io/fyne/v2"
@@ -10,6 +11,8 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
+
+var ErrInvalidKey = errors.New("kunci tidak valid")
 
 func createCaesarTab(w fyne.Window) fyne.CanvasObject {
 	keyEntry := widget.NewEntry()
@@ -71,7 +74,7 @@ func createCaesarTab(w fyne.Window) fyne.CanvasObject {
 	getKeyInt := func() (int, bool) {
 		res, err := strconv.Atoi(keyEntry.Text)
 		if err != nil {
-			dialog.NewError(err, w).Show()
+			dialog.NewError(errors.Join(ErrInvalidKey, err), w).Show()
 			return res, false
 		}
 		return res, true
