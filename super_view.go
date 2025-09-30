@@ -55,6 +55,8 @@ func createSuperEncryptSubTab(w fyne.Window) fyne.CanvasObject {
 
 	plainEntry.Wrapping = fyne.TextWrapBreak
 	cipherEntry.Wrapping = fyne.TextWrapBreak
+	plainTypeSelect := widget.NewSelect(inputTypes, nil)
+	plainTypeSelect.SetSelectedIndex(0)
 
 	buttonEncrypt := widget.NewButton("Encrypt", func() {
 		key, err := SuperDecodePublicKey(publicKeyEntry.Text)
@@ -63,7 +65,20 @@ func createSuperEncryptSubTab(w fyne.Window) fyne.CanvasObject {
 			return
 		}
 
-		encrypted, err := SuperEncrypt(key, []uint8(plainEntry.Text))
+		var plainBytes []uint8
+
+		if plainTypeSelect.SelectedIndex() == 0 {
+			plainBytes = []uint8(plainEntry.Text)
+		} else {
+			p, err := decodeHexString(plainEntry.Text)
+			if err != nil {
+				dialog.NewError(errors.Join(ErrPlainDecode), w).Show()
+				return
+			}
+			plainBytes = p
+		}
+
+		encrypted, err := SuperEncrypt(key, plainBytes)
 		if err != nil {
 			dialog.NewError(errors.Join(ErrEncrypt, err), w).Show()
 			return
@@ -83,7 +98,7 @@ func createSuperEncryptSubTab(w fyne.Window) fyne.CanvasObject {
 			widget.NewFormItem("Kunci Publik", publicKeyEntry),
 		)),
 		NewFlexibleItem(true, container.NewBorder(
-			widget.NewLabel("Plain"), nil, nil, nil,
+			container.NewHBox(widget.NewLabel("Plain"), plainTypeSelect), nil, nil, nil,
 			plainEntry,
 		)),
 		NewFlexibleItem(false, buttonEncrypt),
@@ -97,9 +112,12 @@ func createSuperDecryptSubTab(w fyne.Window) fyne.CanvasObject {
 	privateKeyEntry := widget.NewEntry()
 	plainEntry := NewMultilineReadOnlyEntry()
 	cipherEntry := widget.NewMultiLineEntry()
+	plainTypeSelect := widget.NewSelect(inputTypes, nil)
 
 	plainEntry.Wrapping = fyne.TextWrapBreak
 	cipherEntry.Wrapping = fyne.TextWrapBreak
+
+	plainTypeSelect.SetSelectedIndex(0)
 
 	buttonEncrypt := widget.NewButton("Decrypt", func() {
 		key, err := SuperDecodePrivateKey(privateKeyEntry.Text)
@@ -120,7 +138,16 @@ func createSuperDecryptSubTab(w fyne.Window) fyne.CanvasObject {
 			return
 		}
 
-		plainEntry.SetText(string(decrypted))
+		if plainTypeSelect.SelectedIndex() == 0 {
+			plainEntry.SetText(string(decrypted))
+		} else {
+			hex, err := encodeHexString(decrypted)
+			if err != nil {
+				dialog.NewError(errors.Join(ErrPlainEncode, err), w).Show()
+				return
+			}
+			plainEntry.SetText(hex)
+		}
 	})
 
 	return container.NewPadded(NewFlexibleRow(
@@ -133,7 +160,7 @@ func createSuperDecryptSubTab(w fyne.Window) fyne.CanvasObject {
 		)),
 		NewFlexibleItem(false, buttonEncrypt),
 		NewFlexibleItem(true, container.NewBorder(
-			widget.NewLabel("Plain"), nil, nil, nil,
+			container.NewHBox(widget.NewLabel("Plain"), plainTypeSelect), nil, nil, nil,
 			plainEntry,
 		)),
 	))
